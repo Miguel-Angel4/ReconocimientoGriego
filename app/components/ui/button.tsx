@@ -41,11 +41,7 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ({ className, variant, size, asChild = false, ...props }, ref) => {
-        // Basic implementation since we don't have @radix-ui/react-slot installed yet? 
-        // Wait, prompt said Shadcn is "based on Radix", but I didn't verify if I can install it.
-        // I see class-variance-authority is installed. I will stick to standard button for now if Slot is missing.
-        // Actually, I'll assume standard button element to be safe.
-        const Comp = "button"
+        const Comp = asChild ? Slot : "button"
         return (
             <Comp
                 className={cn(buttonVariants({ variant, size, className }))}
