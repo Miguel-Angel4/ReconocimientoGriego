@@ -1,65 +1,150 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import ProFaceAuth, { ProFaceAuthHandle } from "./components/ProFaceAuth";
+import { Button } from "./components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "./components/ui/card";
+import { Badge } from "./components/ui/badge";
+import { Progress } from "./components/ui/progress";
+
+export default function Page() {
+  const router = useRouter();
+  const authRef = useRef<ProFaceAuthHandle>(null);
+
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "detecting" | "verified" | "error">("loading");
+  const [message, setMessage] = useState("Initializing System...");
+  const [progress, setProgress] = useState(0);
+
+  const handleStatusChange = (newStatus: "idle" | "loading" | "ready" | "detecting" | "verified" | "error") => {
+    setStatus(newStatus);
+    if (newStatus === "loading") {
+      setMessage("Loading Neural Models...");
+      setProgress(30);
+    } else if (newStatus === "ready") {
+      setMessage("Awaiting Input (Spartan ID Required)");
+      setProgress(100);
+    } else if (newStatus === "detecting") {
+      setMessage("Scanning Facial Geometry...");
+      setProgress(100); // Pulse effect handled by CSS?
+    }
+  };
+
+  const handleResult = (success: boolean, msg: string) => {
+    if (success) {
+      // Navigate to success page
+      router.push(`/result?authorized=true&msg=${encodeURIComponent(msg)}`);
+    } else {
+      setMessage(msg);
+      // Optional: Navigate to failure page or show error toast
+      // For now, show on screen
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-background relative overflow-hidden font-sans text-foreground">
+      {/* Background Ambience */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-stone-900 via-background to-black pointer-events-none"></div>
+      <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] pointer-events-none mix-blend-overlay"></div>
+
+      <div className="z-10 w-full max-w-md space-y-8 animate-in fade-in zoom-in duration-500">
+
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-extrabold tracking-[0.2em] text-primary uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+            Spartan<span className="text-foreground">Gate</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+          <p className="text-sm text-secondary tracking-widest uppercase opacity-80">Secure Entrypoint // Face ID</p>
+        </div>
+
+        {/* Main Card */}
+        <Card className="border-2 border-primary/20 bg-card/95 backdrop-blur shadow-2xl overflow-hidden relative group">
+          {/* Top decorative bar */}
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50"></div>
+
+          <CardHeader>
+            <div className="flex justify-between items-center mb-2">
+              <Badge variant={status === "ready" ? "default" : "secondary"} className="tracking-widest">
+                STATUS: {status.toUpperCase()}
+              </Badge>
+              {status === "loading" && <span className="text-xs text-muted-foreground animate-pulse">LOADING...</span>}
+            </div>
+            <CardTitle className="text-xl uppercase tracking-wide text-foreground">Identity Verification</CardTitle>
+            <CardDescription className="text-muted-foreground font-mono text-xs">
+              Face the camera to proceed.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            {/* Camera Component */}
+            <div className="rounded-lg overflow-hidden border border-stone-800 bg-black shadow-inner">
+              <ProFaceAuth
+                ref={authRef}
+                autoStart={true}
+                onStatusChange={handleStatusChange}
+                onResult={handleResult}
+              />
+            </div>
+
+            {/* Progress Bar (Visible during loading or detecting) */}
+            {(status === "loading" || status === "detecting") && (
+              <div className="space-y-1">
+                <Progress value={status === "detecting" ? 100 : progress} className="h-1" />
+                <p className="text-[10px] text-muted-foreground text-center font-mono uppercase">{message}</p>
+              </div>
+            )}
+
+            {/* Messages */}
+            {status !== "loading" && status !== "detecting" && (
+              <div className="p-3 bg-secondary/5 border border-secondary/10 rounded-md">
+                <p className="text-sm text-center text-foreground">{message}</p>
+              </div>
+            )}
+          </CardContent>
+
+          <CardFooter className="flex flex-col gap-3">
+            <Button
+              variant="kratos"
+              size="lg"
+              className="w-full relative overflow-hidden group"
+              onClick={() => authRef.current?.startVerification()}
+              disabled={status === "loading" || status === "detecting"}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              <span className="relative z-10 flex items-center gap-2">
+                INICIAR IDENTIFICACIÓN
+              </span>
+              {/* Button Hover Glow */}
+              <div className="absolute inset-0 bg-red-600 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+            </Button>
+
+            <div className="flex justify-between w-full gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 text-xs border-stone-700 text-stone-400 hover:text-white"
+                onClick={() => authRef.current?.startCamera()}
+              >
+                REINICIAR CÁMARA
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex-1 text-xs bg-stone-800 text-stone-300 hover:bg-stone-700 hover:text-white border border-stone-600"
+                onClick={() => authRef.current?.captureAndRegister()}
+              >
+                REGISTRAR ROSTRO
+              </Button>
+            </div>
+          </CardFooter>
+        </Card>
+
+        {/* Footer */}
+        <div className="text-center">
+          <p className="text-[10px] text-stone-600 font-mono">
+            SECURE SECTOR 4 // BIOMETRICS REQUIRED
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
